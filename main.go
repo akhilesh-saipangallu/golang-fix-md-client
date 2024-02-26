@@ -10,6 +10,7 @@ import (
 	"path"
 	"syscall"
 	"text/template"
+	"time"
 
 	"github.com/falconxio/fix_md_client/configs"
 	"github.com/falconxio/fix_md_client/md_client"
@@ -74,7 +75,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	app := md_client.MarketDataClient{
+	app := &md_client.MarketDataClient{
 		ApiKey:        API_KEY,
 		Passphrase:    PASSPHRASE,
 		SecretKey:     SECRET_KEY,
@@ -96,5 +97,12 @@ func main() {
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	// unsubscribe to all tokens after few seconds
+	go func() {
+		time.Sleep(5 * time.Second)
+		app.UnSubscribeAll()
+	}()
+
 	<-quit
 }
