@@ -20,7 +20,7 @@ func (LogonProcessor) process(logonMsg *quickfix.Message, apiKey string, passphr
 
 	sendingTime, _ := logonMsg.Header.GetString(52)
 	messageType, _ := logonMsg.Header.GetString(35)
-	messageSeqNumber, _ := logonMsg.Header.GetString(34)
+	messageSeqNumber := "1"
 	senderCompId, _ := logonMsg.Header.GetString(49)
 	targetCompId, _ := logonMsg.Header.GetString(56)
 	password, _ := logonMsg.Body.GetString(554)
