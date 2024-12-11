@@ -7,22 +7,31 @@ import (
 )
 
 type MarketDataClient struct {
-	ApiKey        string
-	Passphrase    string
-	SecretKey     string
-	Subscriptions []string
+	ApiKey          string
+	Passphrase      string
+	SecretKey       string
+	SessionId       quickfix.SessionID
+	Subscriptions   []string
+	SubscriptionIds []string
+	Routes          *quickfix.MessageRouter
 }
 
-func (mdc MarketDataClient) OnCreate(sessionID quickfix.SessionID) {}
+func (mdc *MarketDataClient) OnCreate(sessionID quickfix.SessionID) {
+	mdc.SessionId = sessionID
+}
 
 // Upon login subscribe to all symbols
-func (mdc MarketDataClient) OnLogon(sessionID quickfix.SessionID) {
+func (mdc *MarketDataClient) OnLogon(sessionID quickfix.SessionID) {
 	log.Println("logon successful, session id: ", sessionID)
 
-	subscriptionRequest := MarketDataMsgGenerator{}.generate(generateRandomString(5), mdc.Subscriptions)
+	subReqId := generateRandomString(5)
+	subscriptionRequest := MarketDataSubMsgGenerator{}.generate(subReqId, mdc.Subscriptions)
 	if err := quickfix.SendToTarget(subscriptionRequest, sessionID); err != nil {
-		log.Println("error while subscribing to symbols, error: ", err)
+		log.Println("error while subscribing symbols, error: ", err)
 	}
+
+	// track the reqId
+	mdc.SubscriptionIds = append(mdc.SubscriptionIds, subReqId)
 }
 
 func (mdc MarketDataClient) OnLogout(sessionID quickfix.SessionID) {}
@@ -48,4 +57,14 @@ func (mdc MarketDataClient) FromAdmin(msg *quickfix.Message, sessionID quickfix.
 func (mdc MarketDataClient) FromApp(msg *quickfix.Message, sessionID quickfix.SessionID) (reject quickfix.MessageRejectError) {
 	log.Println("FromApp msg: ", msg)
 	return
+}
+
+func (mdc *MarketDataClient) UnSubscribeAll() {
+	for _, subReqId := range mdc.SubscriptionIds {
+		subscriptionRequest := MarketDataUnSubMsgGenerator{}.generate(subReqId, mdc.Subscriptions)
+
+		if err := quickfix.SendToTarget(subscriptionRequest, mdc.SessionId); err != nil {
+			log.Println("error while unsubscribing symbols, error: ", err)
+		}
+	}
 }
